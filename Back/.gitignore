@@ -1,3 +1,5 @@
+uploads/course-files/*
+!uploads/course-files/.gitkeep
 
 node_modules/
 dist

@@ -1,9 +1,56 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom"
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import ErrorMessage from "../components/ErrorMessage"
+import { API_BASE, setUserToken } from "../config/api"
+
+type LoginFormValues = {
+    email: string
+    password: string
+}
 
 export default function LoginView() {
+    const navigate = useNavigate()
+    const [submitError, setSubmitError] = useState<string | null>(null)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
+        defaultValues: { email: "", password: "" },
+    })
+
+    const onLogin = async ({ email, password }: LoginFormValues) => {
+        setSubmitError(null)
+        setIsSubmitting(true)
+        try {
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password }),
+            })
+            if (res.ok) {
+                const data = await res.json()
+                // Guardar el JWT en localStorage
+                if (data.token) setUserToken(data.token)
+                navigate("/pag/cursos", { replace: true })
+                return
+            }
+            const data = await res.json().catch(() => ({}))
+            const msg =
+                typeof data.message === "string"
+                    ? data.message
+                    : Array.isArray(data.errors) && data.errors[0]?.msg
+                      ? data.errors[0].msg
+                      : "No se pudo iniciar sesión"
+            setSubmitError(msg)
+        } catch {
+            setSubmitError("No se pudo conectar con el servidor. ¿Está el backend en marcha?")
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
     return (
         <div className="min-h-screen flex">
-            {/* Panel */}
             <section
                 className="flex-1 flex items-center justify-center px-6"
                 style={{ background: "#F4EDE4" }}
@@ -12,7 +59,6 @@ export default function LoginView() {
                     className="w-full max-w-md"
                     style={{ animation: "fadeUp 0.5s ease both" }}
                 >
-                    {/* Logo mobile */}
                     <Link to="/" className="lg:hidden no-underline block mb-10">
                         <span
                             className="font-serif text-xl font-black"
@@ -23,7 +69,6 @@ export default function LoginView() {
                         </span>
                     </Link>
 
-                    {/* Encabezado */}
                     <h1
                         className="font-serif text-3xl font-black mb-1 tracking-tight"
                         style={{ color: "#2C2C2C" }}
@@ -42,42 +87,47 @@ export default function LoginView() {
                         </Link>
                     </p>
 
-                    {/* Formulario */}
-                    <form 
-                    onSubmit={() => {[]}}
-                    className="flex flex-col gap-5">
-                        {/* Usuario */}
+                    <form
+                        onSubmit={handleSubmit(onLogin)}
+                        className="flex flex-col gap-5"
+                        noValidate
+                    >
                         <div className="flex flex-col gap-1.5">
                             <label
                                 className="text-xs font-semibold uppercase"
                                 style={{ color: "#2C2C2C", letterSpacing: "0.06em" }}
                             >
-                                Nombre de usuario
+                                Email
                             </label>
                             <input
-                                type="text"
-                                name="username"
-                                placeholder="Ej: zapatero_restrepo"
-                                autoComplete="username"
+                                type="email"
+                                autoComplete="email"
+                                placeholder="Ej: ejemplo@gmail.com"
                                 className="w-full px-4 py-3.5 rounded-xl text-sm outline-none transition-all duration-200"
+                                {...register("email", {
+                                    required: "El email es obligatorio",
+                                    pattern: {
+                                        value: /^\S+@\S+$/i,
+                                        message: "El email no es válido",
+                                    },
+                                })}
                                 style={{
                                     border: "2px solid #e8ddd2",
                                     background: "#ffffff",
                                     color: "#2C2C2C",
                                 }}
                                 onFocus={(e) => {
-                                    e.currentTarget.style.borderColor = "#C4622D";
-                                    e.currentTarget.style.boxShadow =
-                                        "0 0 0 3px rgba(196,98,45,0.1)";
+                                    e.currentTarget.style.borderColor = "#C4622D"
+                                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(196,98,45,0.1)"
                                 }}
                                 onBlur={(e) => {
-                                    e.currentTarget.style.borderColor = "#e8ddd2";
-                                    e.currentTarget.style.boxShadow = "none";
+                                    e.currentTarget.style.borderColor = "#e8ddd2"
+                                    e.currentTarget.style.boxShadow = "none"
                                 }}
                             />
+                            {errors.email && <ErrorMessage>{errors.email.message}</ErrorMessage>}
                         </div>
 
-                        {/* Contraseña */}
                         <div className="flex flex-col gap-1.5">
                             <label
                                 className="text-xs font-semibold uppercase"
@@ -87,60 +137,58 @@ export default function LoginView() {
                             </label>
                             <input
                                 type="password"
-                                name="password"
-                                placeholder="Tu contraseña"
                                 autoComplete="current-password"
+                                placeholder="Tu contraseña"
                                 className="w-full px-4 py-3.5 rounded-xl text-sm outline-none transition-all duration-200"
+                                {...register("password", {
+                                    required: "La contraseña es obligatoria",
+                                })}
                                 style={{
                                     border: "2px solid #e8ddd2",
                                     background: "#ffffff",
                                     color: "#2C2C2C",
                                 }}
                                 onFocus={(e) => {
-                                    e.currentTarget.style.borderColor = "#C4622D";
-                                    e.currentTarget.style.boxShadow =
-                                        "0 0 0 3px rgba(196,98,45,0.1)";
+                                    e.currentTarget.style.borderColor = "#C4622D"
+                                    e.currentTarget.style.boxShadow = "0 0 0 3px rgba(196,98,45,0.1)"
                                 }}
                                 onBlur={(e) => {
-                                    e.currentTarget.style.borderColor = "#e8ddd2";
-                                    e.currentTarget.style.boxShadow = "none";
+                                    e.currentTarget.style.borderColor = "#e8ddd2"
+                                    e.currentTarget.style.boxShadow = "none"
                                 }}
                             />
+                            {errors.password && (
+                                <ErrorMessage>{errors.password.message}</ErrorMessage>
+                            )}
                         </div>
 
-                        {/* Botón */}
+                        {submitError && <ErrorMessage>{submitError}</ErrorMessage>}
+
                         <button
                             type="submit"
-                            className="w-full py-4 rounded-xl font-bold text-base text-white border-none cursor-pointer transition-all duration-200 mt-2"
+                            disabled={isSubmitting}
+                            className="w-full py-4 rounded-xl font-bold text-base text-white border-none cursor-pointer transition-all duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
                             style={{
                                 background: "#C4622D",
                                 boxShadow: "0 4px 20px rgba(196,98,45,0.3)",
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = "#9e4e23";
-                                e.currentTarget.style.transform = "translateY(-2px)";
-                                e.currentTarget.style.boxShadow =
-                                    "0 8px 30px rgba(196,98,45,0.4)";
+                                if (isSubmitting) return
+                                e.currentTarget.style.background = "#9e4e23"
+                                e.currentTarget.style.transform = "translateY(-2px)"
+                                e.currentTarget.style.boxShadow = "0 8px 30px rgba(196,98,45,0.4)"
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = "#C4622D";
-                                e.currentTarget.style.transform = "translateY(0)";
-                                e.currentTarget.style.boxShadow =
-                                    "0 4px 20px rgba(196,98,45,0.3)";
+                                e.currentTarget.style.background = "#C4622D"
+                                e.currentTarget.style.transform = "translateY(0)"
+                                e.currentTarget.style.boxShadow = "0 4px 20px rgba(196,98,45,0.3)"
                             }}
                         >
-                            Iniciar sesión
+                            {isSubmitting ? "Entrando…" : "Iniciar sesión"}
                         </button>
                     </form>
-
-                    {/* Extra */}
-                    <p className="text-xs text-center mt-6" style={{ color: "#444444" }}>
-                        <Link to="/forgot-password" className="hover:underline">
-                            ¿Olvidaste tu contraseña?
-                        </Link>
-                    </p>
                 </div>
             </section>
         </div>
-    );
+    )
 }
